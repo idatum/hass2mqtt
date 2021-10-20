@@ -274,7 +274,7 @@ namespace hass2mqtt
                     return;
                 }
                 using var wsClient = await ConnectHassEvents(cancelSource.Token);
-                await ProcessHassEvents(wsClient, cancelSource.Token);
+                await ProcessHassEvents(wsClient, CancellationToken.None);
                 await DisconnectMqtt();
             }
             catch (MqttCommunicationException ex)
