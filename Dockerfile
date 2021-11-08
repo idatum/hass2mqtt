@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:5.0.402-alpine3.14-amd64 AS build
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
 WORKDIR /app
 
 # Label as build image
@@ -13,7 +13,7 @@ COPY ./ ./
 WORKDIR /app
 RUN dotnet publish -c Release -o out
 
-FROM mcr.microsoft.com/dotnet/sdk:5.0.402-alpine3.14-amd64 AS runtime
+FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS runtime
 RUN addgroup -g 1010 hass2mqtt && \
     adduser -S -u 1010 -G hass2mqtt -s /bin/sh hass2mqtt
 WORKDIR /app
