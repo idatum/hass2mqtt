@@ -1,6 +1,6 @@
 **hass2mqtt** is a different take on the offical Home Assistant MQTT Statestream integration: https://www.home-assistant.io/integrations/mqtt_statestream/
 
-Implemented in C# and .NET 5, with Docker in mind as the host, Home Assistant events are subscribed via its WebSocket API and forwarded to an MQTT broker. The full state_changed event payload is passed as the MQTT message payload. The default topic is `HA/event/state_changed/{entity_id}`.
+Implemented in C# and .NET 6, with Docker in mind as the host, Home Assistant events are subscribed via its WebSocket API and forwarded to an MQTT broker. The full state_changed event payload is passed as the MQTT message payload. The default topic is `HA/event/state_changed/{entity_id}`.
 
 Client event processing can use the full state_changed payload for a stateless implementation of the code that processes these events. The MQTT Statestream integration instead requires the client to retain state between each topic if processing requires more than one attribute. For example, let's say you need to log both the state (e.g. 'on' or 'off') and the friendly name of the entity. You would need to retain attributes of seperate messages to log both. To further illustrate, here's a snippet of Python client code using paho.mqtt:
 
