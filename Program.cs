@@ -26,6 +26,7 @@ namespace hass2mqtt
         private static Tracing _tracing = new();
         private static IConfigurationRoot _configuration;
         private static Inclusion _inclusion = new();
+        private static int WebsocketErrorSleepMs = 1000;
 
         private static void OnPublisherConnected(MqttClientConnectedEventArgs x)
         {
@@ -284,7 +285,15 @@ namespace hass2mqtt
             }
             catch (WebSocketException ex)
             {
-                _tracing.Error($"WebSocket: {ex.Message}");
+                if (WebSocketError.NotAWebSocket == ex.WebSocketErrorCode)
+                {
+                    _tracing.Info($"Sleeping after WebSocket error {ex.Message}");
+                    await Task.Delay(WebsocketErrorSleepMs);
+                }
+                else
+                {
+                    _tracing.Error($"WebSocket: {ex.Message}");
+                }
                 _tracing.Verbose($"{ex}");
             }
             catch (JsonException ex)
