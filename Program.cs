@@ -285,6 +285,7 @@ namespace hass2mqtt
             }
             catch (WebSocketException ex)
             {
+                _tracing.Verbose($"{ex}");
                 if (WebSocketError.NotAWebSocket == ex.WebSocketErrorCode)
                 {
                     _tracing.Info($"Sleeping after WebSocket error {ex.Message}");
@@ -294,7 +295,6 @@ namespace hass2mqtt
                 {
                     _tracing.Error($"WebSocket: {ex.Message}");
                 }
-                _tracing.Verbose($"{ex}");
             }
             catch (JsonException ex)
             {
