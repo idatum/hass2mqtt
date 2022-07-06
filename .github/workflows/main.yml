@@ -2,7 +2,7 @@ on: [push]
 name: hass2mqtt_build_push_image
 
 jobs:
-    build-and-deploy:
+    build-and-push:
         runs-on: ubuntu-latest
         steps:
         # checkout the repo
