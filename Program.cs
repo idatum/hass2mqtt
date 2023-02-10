@@ -22,9 +22,11 @@ namespace hass2mqtt
 {
     class Program
     {
-        private static IMqttClient _mqttClient;
+        private static IMqttClient? _mqttClient;
+        private static string? _baseTopic;
+        private static string? _hassServerUri;
         private static Tracing _tracing = new();
-        private static IConfigurationRoot _configuration;
+        private static IConfigurationRoot? _configuration;
         private static Inclusion _inclusion = new();
         private static int WebsocketErrorSleepMs = 1000;
 
@@ -40,6 +42,10 @@ namespace hass2mqtt
 
         private static async Task<bool> ConnectMqtt()
         {
+            if (_configuration is null)
+            {
+                throw new InvalidOperationException("_configuration");
+            }
             var port = _configuration.GetValue<int>("MQTT_PORT");
             var server = _configuration["MQTT_SERVER"];
             var clientId = _configuration["MQTT_CLIENT_ID"];
@@ -61,10 +67,11 @@ namespace hass2mqtt
                     TlsOptions = tlsOptions
                 }
             };
+            var mqtt_password = _configuration["MQTT_PASSWORD"] ?? String.Empty;
             options.Credentials = new MqttClientCredentials
             {
                 Username = _configuration["MQTT_USERNAME"],
-                Password = Encoding.UTF8.GetBytes(_configuration["MQTT_PASSWORD"])
+                Password = Encoding.UTF8.GetBytes(mqtt_password)
             };
             options.CleanSession = true;
             _mqttClient = mqttFactory.CreateMqttClient();
@@ -117,15 +124,22 @@ namespace hass2mqtt
 
         private static async Task<ClientWebSocket> ConnectHassEvents(CancellationToken cancelToken)
         {
-            var hassServerUri = _configuration["HASS_SERVER_URI"];
-            Debug.WriteLine($"HASS URL: {hassServerUri}");
-            var wsUri = new Uri(hassServerUri);
+            if (_configuration is null)
+            {
+                throw new InvalidOperationException("_configuration");
+            }
+            if (_hassServerUri is null)
+            {
+                throw new InvalidOperationException("_hassServerUri");
+            }
+            Debug.WriteLine($"HASS URL: {_hassServerUri}");
+            var wsUri = new Uri(_hassServerUri);
             var wsClient = new ClientWebSocket();
             await wsClient.ConnectAsync(wsUri, cancelToken);
             if (wsClient.State != WebSocketState.Open)
             {
                 _tracing.Error($"WS connect returned {wsClient.State}");
-                throw new Exception($"Could not connect to {hassServerUri}");
+                throw new Exception($"Could not connect to {_hassServerUri}");
             }
             var wsBuffer = new byte[1024];
 
@@ -223,7 +237,7 @@ namespace hass2mqtt
                 return;
             }
             // Publish topic and payload.
-            var topic = $"{_configuration["MQTT_BASE_TOPIC"]}/event/{eventType}/{entityId}";
+            var topic = $"{_baseTopic}/event/{eventType}/{entityId}";
             await PublishHassStateChanged(topic, payload);
         }
 
@@ -264,6 +278,16 @@ namespace hass2mqtt
                 {
                     _tracing.Info($"\t{entityId}");
                 }
+            }
+            _baseTopic = _configuration["MQTT_BASE_TOPIC"];
+            if (_baseTopic is null)
+            {
+                throw new InvalidOperationException("_baseTopic");
+            }
+            _hassServerUri = _configuration["HASS_SERVER_URI"];
+            if (_hassServerUri is null)
+            {
+                throw new InvalidOperationException("_hassServerUri");
             }
             // Main processing
             var cancelSource = new CancellationTokenSource();

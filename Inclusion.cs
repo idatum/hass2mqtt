@@ -4,7 +4,7 @@ namespace hass2mqtt
 {
     public class Inclusion
     {
-        public HashSet<string> Entities { get; set; }
+        public HashSet<string>? Entities { get; set; }
 
         public bool EntityIncluded(string entityId)
         {
