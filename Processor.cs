@@ -172,7 +172,7 @@ class Processor
         authWriter.WriteEndObject();
         authWriter.Flush();
         await Send(wsClient, Encoding.UTF8.GetString(authStream.ToArray()), cancelToken);
-        
+
         textOut = await Receive(wsClient, wsBuffer, cancelToken);
         _logger.LogInformation($"{textOut}");
 
@@ -198,7 +198,7 @@ class Processor
         {
             throw new InvalidOperationException("_mqttClient");
         }
-        
+
         var message = new MqttApplicationMessageBuilder()
                             .WithTopic(topic)
                             .WithPayload(payload)

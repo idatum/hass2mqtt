@@ -1,8 +1,8 @@
 using hass2mqtt;
 
 var configuration = new ConfigurationBuilder()
-                    .AddJsonFile("appsettings.json", optional:true, reloadOnChange:true)
-                    .AddJsonFile("appsettings.Development.json", optional:true)
+                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                    .AddJsonFile("appsettings.Development.json", optional: true)
                     .AddEnvironmentVariables()
                     .Build();
 
@@ -28,3 +28,4 @@ IHost host = Host.CreateDefaultBuilder(args)
     .Build();
 
 host.Run();
+
