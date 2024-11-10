@@ -41,7 +41,7 @@ class Processor
             _logger.LogInformation("Inclusions:");
             foreach (var entityId in _inclusion.Entities)
             {
-                _logger.LogInformation($"\t{entityId}");
+                _logger.LogInformation("\t{entityId}", entityId);
             }
         }
         _baseTopic = _configuration["MQTT_BASE_TOPIC"];
@@ -81,7 +81,7 @@ class Processor
                         .WithCleanSession(true)
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(5))
                         .Build();
-        _logger.LogInformation($"Connecting to {server}:{port} with client id {clientId}");
+        _logger.LogInformation("Connecting to {server}:{port} with client id {clientId}", server, port, clientId);
         _mqttClient = mqttFactory.CreateMqttClient();
         if (_mqttClient is null)
         {
@@ -100,7 +100,7 @@ class Processor
         var connectResult = await _mqttClient.ConnectAsync(options);
         if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
         {
-            _logger.LogError($"MQTT connection failed: {connectResult.ReasonString}");
+            _logger.LogError("MQTT connection failed: {connectResult.ReasonString}", connectResult.ReasonString);
             return false;
 
         }
@@ -115,7 +115,7 @@ class Processor
 
     private async Task Send(ClientWebSocket wsClient, string message, CancellationToken cancelToken)
     {
-        _logger.LogDebug($"Sending {message}");
+        _logger.LogDebug("Sending {message}", message);
         var bytesToSend = new ArraySegment<byte>(Encoding.UTF8.GetBytes(message));
         await wsClient.SendAsync(bytesToSend, WebSocketMessageType.Text, true, cancelToken);
     }
@@ -127,7 +127,7 @@ class Processor
         {
             var wsResult = await wsClient.ReceiveAsync(new ArraySegment<byte>(wsBuffer), cancelToken);
             textOut.Append(Encoding.UTF8.GetString(wsBuffer, 0, wsResult.Count));
-            _logger.LogDebug($"WS received {wsResult.Count} bytes.");
+            _logger.LogDebug("WS received {wsResult.Count} bytes.", wsResult.Count);
             if (wsResult.EndOfMessage)
             {
                 _logger.LogDebug("End of WS receive.");
@@ -135,7 +135,7 @@ class Processor
             }
         }
         var message = textOut.ToString();
-        _logger.LogDebug($"WS message: {message}");
+        _logger.LogDebug("WS message: {message}", message);
 
         return message;
     }
@@ -156,13 +156,13 @@ class Processor
         await wsClient.ConnectAsync(wsUri, cancelToken);
         if (wsClient.State != WebSocketState.Open)
         {
-            _logger.LogError($"WS connect returned {wsClient.State}");
+            _logger.LogError("WS connect returned {wsClient.State}", wsClient.State);
             throw new Exception($"Could not connect to {_hassServerUri}");
         }
 
         var wsBuffer = new byte[1024];
         var textOut = await Receive(wsClient, wsBuffer, cancelToken);
-        _logger.LogInformation($"{textOut}");
+        _logger.LogInformation("{textOut}", textOut);
 
         using var authStream = new MemoryStream();
         using var authWriter = new Utf8JsonWriter(authStream);
@@ -174,7 +174,7 @@ class Processor
         await Send(wsClient, Encoding.UTF8.GetString(authStream.ToArray()), cancelToken);
 
         textOut = await Receive(wsClient, wsBuffer, cancelToken);
-        _logger.LogInformation($"{textOut}");
+        _logger.LogInformation("{textOut}", textOut);
 
         using var subStream = new MemoryStream();
         using var subWriter = new Utf8JsonWriter(subStream);
@@ -187,7 +187,7 @@ class Processor
         await Send(wsClient, Encoding.UTF8.GetString(subStream.ToArray()), cancelToken);
 
         textOut = await Receive(wsClient, wsBuffer, cancelToken);
-        _logger.LogInformation($"{textOut}");
+        _logger.LogInformation("{textOut}", textOut);
 
         return wsClient;
     }
@@ -204,11 +204,11 @@ class Processor
                             .WithPayload(payload)
                             .WithQualityOfServiceLevel(MqttQualityOfServiceLevel.AtLeastOnce)
                             .Build();
-        _logger.LogInformation($"Publishing {topic}");
+        _logger.LogInformation("Publishing {topic}", topic);
         var pubResult = await _mqttClient.PublishAsync(message);
         if (pubResult.ReasonCode != MqttClientPublishReasonCode.Success)
         {
-            _logger.LogError($"Published failed: {pubResult.ReasonString}");
+            _logger.LogError("Published failed: {pubResult.ReasonString}", pubResult.ReasonString);
         }
     }
 
@@ -219,44 +219,44 @@ class Processor
         // Event
         if (!document.RootElement.TryGetProperty("event", out JsonElement eventElement))
         {
-            _logger.LogWarning($"No event property: {document.RootElement}");
+            _logger.LogWarning("No event property: {document.RootElement}", document.RootElement);
             return;
         }
         // Data
         if (!eventElement.TryGetProperty("data", out JsonElement dataElement))
         {
-            _logger.LogWarning($"No data property: {document.RootElement}");
+            _logger.LogWarning("No data property: {document.RootElement}", document.RootElement);
             return;
         }
         // Entity id
         if (!dataElement.TryGetProperty("entity_id", out JsonElement entityIdElement))
         {
-            _logger.LogWarning($"No entity_id property: {document.RootElement}");
+            _logger.LogWarning("No entity_id property: {document.RootElement}", document.RootElement);
             return;
         }
         var entityId = entityIdElement.GetString();
         if (String.IsNullOrEmpty(entityId))
         {
-            _logger.LogWarning($"Empty entity_id: {document.RootElement}");
+            _logger.LogWarning("Empty entity_id: {document.RootElement}", document.RootElement);
             return;
         }
         // Event type
         if (!eventElement.TryGetProperty("event_type", out JsonElement eventTypeElement))
         {
-            _logger.LogWarning($"No event_type property: {document.RootElement}");
+            _logger.LogWarning("No event_type property: {document.RootElement}", document.RootElement);
             return;
         }
         var eventType = eventTypeElement.GetString();
         if (String.IsNullOrEmpty(eventType))
         {
-            _logger.LogWarning($"Empty event_type: {document.RootElement}");
+            _logger.LogWarning("Empty event_type: {document.RootElement}", document.RootElement);
             return;
         }
 
         // Check for inclusions if any, and skip of implicitly excluded.
         if (!_inclusion.EntityIncluded(entityId))
         {
-            _logger.LogDebug($"Skipping {entityId}");
+            _logger.LogDebug("Skipping {entityId}", entityId);
             return;
         }
         // Publish topic and payload.
@@ -270,7 +270,7 @@ class Processor
         while (cancelToken.IsCancellationRequested == false)
         {
             var textOut = await Receive(wsClient, wsBuffer, cancelToken);
-            _logger.LogDebug($"{textOut}");
+            _logger.LogDebug("{textOut}", textOut);
             await ProcessHassStateChanged(textOut);
         }
     }
@@ -295,34 +295,33 @@ class Processor
         }
         catch (MqttCommunicationException ex)
         {
-            _logger.LogError($"MQTT: {ex.Message}");
-            _logger.LogDebug($"{ex}");
+            _logger.LogError("MQTT: {ex.Message}", ex.Message);
+            _logger.LogDebug("{ex}", ex);
         }
         catch (WebSocketException ex)
         {
-            _logger.LogDebug($"{ex}");
+            _logger.LogDebug("{ex}", ex);
             if (WebSocketError.NotAWebSocket == ex.WebSocketErrorCode)
             {
-                _logger.LogInformation($"Sleeping after WebSocket error {ex.Message}");
+                _logger.LogInformation("Sleeping after WebSocket error {ex.Message}", ex.Message);
                 await Task.Delay(WebsocketErrorSleepMs);
             }
             else
             {
-                _logger.LogError($"WebSocket: {ex.Message}");
+                _logger.LogError("WebSocket: {ex.Message}", ex.Message);
             }
         }
         catch (JsonException ex)
         {
-            var message = $"JSON: {ex.Message}";
             if (ex.LineNumber == 0 && ex.BytePositionInLine == 0)
             {
-                _logger.LogInformation(message);
+                _logger.LogInformation("JSON: {ex.Message}", ex.Message);
             }
             else
             {
-                _logger.LogError(message);
+                _logger.LogError("JSON: {ex.Message}", ex.Message);
             }
-            _logger.LogDebug($"{ex}");
+            _logger.LogDebug("{ex}", ex);
         }
         finally
         {

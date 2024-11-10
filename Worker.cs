@@ -1,15 +1,9 @@
 namespace hass2mqtt;
 
-public class Worker : BackgroundService
+public class Worker(ILogger<Worker> logger, IConfiguration configuration) : BackgroundService
 {
-    private readonly ILogger<Worker> _logger;
-    private readonly IConfiguration _configuration;
-
-    public Worker(ILogger<Worker> logger, IConfiguration configuration)
-    {
-        _logger = logger;
-        _configuration = configuration;
-    }
+    private readonly ILogger<Worker> _logger = logger;
+    private readonly IConfiguration _configuration = configuration;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
