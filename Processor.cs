@@ -9,10 +9,8 @@ using System.Threading.Tasks;
 using System.Net.WebSockets;
 using System.Text.Json;
 using MQTTnet;
-using MQTTnet.Client;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
-using MQTTnet.Server;
 using MQTTnet.Exceptions;
 using Microsoft.Extensions.Configuration;
 
@@ -68,7 +66,7 @@ class Processor
         var useTls = _configuration.GetValue<bool>("MQTT_USE_TLS");
         var username = _configuration["MQTT_USERNAME"] ?? String.Empty;
         var password = _configuration["MQTT_PASSWORD"] ?? String.Empty;
-        var mqttFactory = new MqttFactory();
+        var mqttFactory = new MqttClientFactory();
         var tlsOptions = new MqttClientTlsOptions
         {
             UseTls = useTls
@@ -80,6 +78,7 @@ class Processor
                         .WithTlsOptions(tlsOptions)
                         .WithCleanSession(true)
                         .WithKeepAlivePeriod(TimeSpan.FromSeconds(5))
+                        .WithClientId(clientId)
                         .Build();
         _logger.LogInformation("Connecting to {server}:{port} with client id {clientId}", server, port, clientId);
         _mqttClient = mqttFactory.CreateMqttClient();
@@ -100,7 +99,7 @@ class Processor
         var connectResult = await _mqttClient.ConnectAsync(options);
         if (connectResult.ResultCode != MqttClientConnectResultCode.Success)
         {
-            _logger.LogError("MQTT connection failed: {connectResult.ReasonString}", connectResult.ReasonString);
+            _logger.LogError("MQTT connection failed: {ReasonString}", connectResult.ReasonString);
             return false;
 
         }
@@ -110,7 +109,10 @@ class Processor
     private async Task DisconnectMqtt()
     {
         _logger.LogInformation("Disconnecting MQTT");
-        await _mqttClient.DisconnectAsync();
+        if (_mqttClient?.IsConnected == true)
+        {
+            await _mqttClient.DisconnectAsync();
+        }
     }
 
     private async Task Send(ClientWebSocket wsClient, string message, CancellationToken cancelToken)
@@ -206,9 +208,9 @@ class Processor
                             .Build();
         _logger.LogInformation("Publishing {topic}", topic);
         var pubResult = await _mqttClient.PublishAsync(message);
-        if (pubResult.ReasonCode != MqttClientPublishReasonCode.Success)
+        if (!pubResult.IsSuccess)
         {
-            _logger.LogError("Published failed: {pubResult.ReasonString}", pubResult.ReasonString);
+            _logger.LogError("Published failed: {ReasonString}", pubResult.ReasonString);
         }
     }
 
@@ -282,15 +284,15 @@ class Processor
     public async Task ProcessAsync()
     {
         // Main processing
-        var cancelSource = new CancellationTokenSource();
-        cancelSource.CancelAfter(_configuration.GetValue<int>("CANCEL_AFTER"));
         try
         {
             if (!await ConnectMqtt())
             {
                 return;
             }
-            using var wsClient = await ConnectHassEvents(cancelSource.Token);
+            var cancelConnect = new CancellationTokenSource();
+            cancelConnect.CancelAfter(_configuration.GetValue<int>("CANCEL_AFTER"));
+            using var wsClient = await ConnectHassEvents(cancelConnect.Token);
             await ProcessHassEvents(wsClient, CancellationToken.None);
         }
         catch (MqttCommunicationException ex)
